@@ -1,5 +1,7 @@
 # Headless test runner. Usage:
-#   godot --headless --path . res://tests/run_tests.tscn
+#   godot --headless --path . -s res://tests/run_tests.gd
+# (Script extends SceneTree, so it runs standalone via -s; the .tscn wrapper
+# cannot host it as a Node.)
 # Prints ok/ERR per assertion; exit code 0 = all pass, 1 = failures.
 extends SceneTree
 
@@ -16,6 +18,7 @@ func _initialize() -> void:
 	_test_world_deltas(balance)
 	_test_crafting(balance)
 	_test_save_roundtrip(balance)
+	_test_defeat_quest(balance)
 
 	print("\n==== TEST RESULTS: %d passed, %d failed ====" % [_passes, _failures.size()])
 	if _failures.size() > 0:
@@ -160,3 +163,42 @@ func _test_save_roundtrip(balance: Dictionary) -> void:
 	qinv.add(str(q["target"]), 999)
 	qs2.on_item_gained(str(q["target"]), 999)
 	_check(qs2.completed.size() == 1, "quest completion after load works")
+
+
+func _test_defeat_quest(balance: Dictionary) -> void:
+	print("\n[defeat quests]")
+	var inv := InventorySystem.new()
+	var qs := QuestSystem.new(balance, {}, inv)
+	var rng := SeededRng.new(4242)
+	# Force a defeat quest (kind alternates by 50/50 chance, so retry a few).
+	var dq: Dictionary = {}
+	for i in range(8):
+		var q: Dictionary = qs.make_quest(rng, "v1")
+		if q["kind"] == "defeat":
+			dq = q
+			break
+	_check(dq != {}, "a defeat quest was offered")
+	if dq == {}:
+		return
+	qs.offer(dq)
+	var target: String = str(dq["target"])
+	var qty: int = int(dq["qty"])
+	# Partial progress does not complete.
+	qs.on_enemy_killed(target)
+	_check(qs.active.size() == 1 and qs.completed.size() == 0, "defeat quest partial progress stays active")
+	for i in range(qty - 1):
+		qs.on_enemy_killed(target)
+	_check(qs.is_complete(dq), "defeat quest completes after N kills")
+	_check(qs.completed.size() == 1, "defeat quest moved to completed")
+	var reward: Dictionary = dq["reward"]
+	var reward_items: int = 0
+	for mat in reward:
+		reward_items += int(reward[mat])
+	_check(reward_items > 0, "defeat quest reward granted to inventory")
+	# Unrelated kills do not progress it.
+	var other: String = "wolf" if target == "zombie" else "zombie"
+	var q2: Dictionary = qs.make_quest(rng, "v2")
+	if q2["kind"] == "defeat" and q2["target"] == other:
+		qs.offer(q2)
+		qs.on_enemy_killed(other)
+		_check(int(dq["progress"]) == qty, "unrelated kills don't progress other quest")
