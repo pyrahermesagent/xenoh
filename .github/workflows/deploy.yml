@@ -25,8 +25,25 @@ env:
   DEPLOY_DIR: "~/xenoh"
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Godot
+        run: |
+          curl -sL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_TAG}/Godot_v${GODOT_TAG}_linux.x86_64.zip"
+          unzip -q godot.zip && chmod +x Godot_v${GODOT_TAG}_linux.x86_64
+          ./Godot_v${GODOT_TAG}_linux.x86_64 --version
+      - name: Import
+        run: ./Godot_v${GODOT_TAG}_linux.x86_64 --headless --path . --import
+      - name: Unit tests (determinism / crafting / save round-trip)
+        run: ./Godot_v${GODOT_TAG}_linux.x86_64 --headless --path . -s res://tests/run_tests.gd
+      - name: 60fps budget @ 20 enemies
+        run: ./Godot_v${GODOT_TAG}_linux.x86_64 --headless --path . res://tests/bench.tscn
+
   build-deploy:
     runs-on: ubuntu-latest
+    needs: test
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,6 +74,7 @@ jobs:
 
       - name: Export web build (threads disabled)
         run: |
+          mkdir -p export/web
           ./Godot_v${GODOT_TAG}_linux.x86_64 --headless --path . --export-release "Web" export/web/index.html
           cp YTGameSDK.js export/web/
           find export/web -name "*.import" -delete
