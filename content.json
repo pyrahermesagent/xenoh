@@ -1,0 +1,46 @@
+{
+  "quest_lines": {
+    "fetch": [
+      "Gather wood, love, before the soup turns to regret.",
+      "Fetch rare ore, dear, or the forge gets sulky.",
+      "Please gather wood; the hearth is colder than gossip.",
+      "Bring rare ore, child, before the smith starts humming.",
+      "Gather wood, would you? The kettle has opinions.",
+      "Fetch rare ore, kindly; the mine is shy but useful.",
+      "Please gather wood, or the evening gets dramatic.",
+      "Fetch rare ore, dear, before the metal starts complaining."
+    ],
+    "defeat": [
+      "Defeat the zombies before they start paying rent.",
+      "Defeat the wolves before they audition our sheep.",
+      "Please defeat those zombies; they've unionized the grave.",
+      "Do defeat the wolves, or we'll be wearing our own coats.",
+      "Defeat the zombies, if you please, they're collecting tithes.",
+      "Defeat the wolves before they make the barn a nightclub.",
+      "Defeat the zombies; they keep arguing with the fence.",
+      "Defeat the wolves, they've started charging entry to our goats."
+    ]
+  },
+  "villager_names": [
+    "Ana",
+    "Bram",
+    "Cora",
+    "Dew",
+    "Ella",
+    "Finn",
+    "Gwen",
+    "Hux",
+    "Ivy",
+    "Jon",
+    "Kai",
+    "Lila"
+  ],
+  "flavor": [
+    "The meadow stretches beyond maps, its blades whispering to travelers.",
+    "Dark patches in the grass mark places where the sky forgot to fall.",
+    "Hidden crystals pulse beneath the roots, trading light for secrets.",
+    "Monsters crawl from the shade, wearing faces that almost belong.",
+    "Wandering folk follow the bright blades, never trusting the same path twice.",
+    "Where grass grows black, the meadow remembers the wanderers who vanished."
+  ]
+}

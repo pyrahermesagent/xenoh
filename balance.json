@@ -1,0 +1,93 @@
+{
+  "_comment": "XenoHeart balance config. Every tunable lives here (see DESIGN_DECISIONS.md for rationale). Tweak to rebalance.",
+  "version": 1,
+  "world": {
+    "seed": 1337,
+    "chunk_radius": 13,
+    "chunk_view_window": 4,
+    "spawn_clear_radius": 8,
+    "village_spacing": 22,
+    "dark_noise_threshold": 0.22,
+    "dark_min_area": 14,
+    "ocean_noise_threshold": 0.345,
+    "hill_noise_threshold": 0.29,
+    "tree_chance": 0.14,
+    "ore_chance": 0.02,
+    "chest_chance": 0.004,
+    "chest_min_dist_from_spawn": 6,
+    "ore_min_dist_from_spawn": 5
+  },
+  "ticks": {
+    "tick_seconds": 0.7,
+    "auto_save_every_ticks": 50
+  },
+  "player": {
+    "base_hp": 2,
+    "armor_hp_bonus": { "none": 0, "leather_armor": 2, "steel_armor": 5, "ultimate_armor": 10 },
+    "hp_regen_seconds_since_hit": 20.0,
+    "hp_regen_per_second": 1.0,
+    "base_damage": 1
+  },
+  "weapons": {
+    "none":       { "damage": 0, "reach": 0, "pattern": "none" },
+    "sword":      { "damage": 2, "reach": 1, "pattern": "face" },
+    "spear":      { "damage": 1, "reach": 2, "pattern": "face" },
+    "axe":        { "damage": 2, "reach": 1, "pattern": "front3" },
+    "hammer":     { "damage": 3, "reach": 1, "pattern": "all6" }
+  },
+  "enemies": {
+    "zombie": { "hp": 3, "damage": 1, "speed": "1_hex_per_tick", "spawn_weight": 60 },
+    "wolf":   { "hp": 2, "damage": 1, "speed": "1_hex_per_tick", "spawn_weight": 40 }
+  },
+  "spawns": {
+    "max_active_enemies": 20,
+    "max_active_enemies_far": 30,
+    "spawn_check_every_ticks": 3,
+    "spawn_radius": 14,
+    "despawn_radius": 26,
+    "min_player_dark_or_near": true
+  },
+  "loot": {
+    "chest_table": [
+      { "item": "wood", "qty": [2, 5], "weight": 30 },
+      { "item": "rare_ore", "qty": [1, 2], "weight": 25 },
+      { "item": "rare_stone", "qty": [1, 1], "weight": 15 },
+      { "item": "leather_armor", "qty": [1, 1], "weight": 10 },
+      { "item": "sword", "qty": [1, 1], "weight": 10 },
+      { "item": "spear", "qty": [1, 1], "weight": 8 },
+      { "item": "axe", "qty": [1, 1], "weight": 7 },
+      { "item": "hammer", "qty": [1, 1], "weight": 5 }
+    ],
+    "crystal_loot": { "darkness_crystal": 1 },
+    "tree_wood": [1, 2],
+    "ore_yield": 1
+  },
+  "crafting": {
+    "leather_armor":  { "wood": 5, "rare_ore": 2, "darkness_crystal": 0 },
+    "steel_armor":    { "wood": 4, "rare_ore": 6, "darkness_crystal": 0 },
+    "ultimate_armor": { "wood": 10, "rare_ore": 10, "darkness_crystal": 1 },
+    "sword":    { "wood": 4, "rare_ore": 3, "darkness_crystal": 0 },
+    "spear":    { "wood": 6, "rare_ore": 1, "darkness_crystal": 0 },
+    "axe":      { "wood": 7, "rare_ore": 2, "darkness_crystal": 0 },
+    "hammer":   { "wood": 8, "rare_ore": 5, "darkness_crystal": 0 },
+    "ultimate_sword": { "wood": 15, "rare_ore": 15, "darkness_crystal": 2 }
+  },
+  "quests": {
+    "max_active": 3,
+    "fetch_qty_min": 3,
+    "fetch_qty_max": 6,
+    "defeat_count_min": 2,
+    "defeat_count_max": 4,
+    "rewards": {
+      "fetch_wood":    { "rare_ore": 2 },
+      "fetch_ore":     { "rare_stone": 1 },
+      "defeat_zombie": { "wood": 4 },
+      "defeat_wolf":   { "rare_stone": 1 }
+    }
+  },
+  "villagers": {
+    "per_village": [1, 2],
+    "offered": { "trade": 0.45, "quest": 0.35, "none": 0.20 },
+    "trade_wood_for_ore": { "give_wood": 4, "get_ore": 1 }
+  }
+}
