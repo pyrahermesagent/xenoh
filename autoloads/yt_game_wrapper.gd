@@ -1,13 +1,25 @@
 # ==================================================
-# Begin YouTube Playables integration section 
+# YouTube Playables integration — Godot 4 bridge
 # ==================================================
 extends Node
-
-## This script provides a bridge to the YouTube Playables JS SDK for Godot games.
-## It should be configured as an Autoload singleton in your project settings.
+## Bridges `window.YTGameSDK_Godot` (the official YTGameSDK.js object,
+## https://developers.google.com/youtube/gaming/playables/samples/godot_wrapper)
+## into this Node.
 ##
-## It provides functions to interact with the SDK and signals for handling
-## asynchronous events and callbacks from the YouTube environment.
+## Google's sample targets Godot 3 (`get_interface().set(...)`). Godot 4's
+## JavaScriptBridge changed: a `create_callback()` result is a
+## `JavaScriptObject` that does NOT serialize to JS source (str() ->
+## "<JavaScriptObject#id>"), and `.set()` on it invokes a JS *method*, not a
+## property write. So this Godot 4 port uses the bulletproof pattern:
+##
+##   * JS installs the official SDK's system listeners ONCE onto a pure-JS
+##     `window.GodotYTCallbacks` object (set up in `_ready`). Those callbacks
+##     only set plain `window.__XENOHT.*` flags — no Godot objects involved.
+##   * GDScript polls those flags each frame (`_process`) via `eval` and
+##     emits the public signals. Reading a window property is a trivial,
+##     injection-free `eval`, so it always works in the web build.
+##
+## Public names/signals match the official wrapper, so game code is unchanged.
 
 # Signals for async operations and callbacks
 signal audio_enabled_changed(is_enabled: bool)
@@ -19,126 +31,157 @@ signal load_data_received(data: String)
 signal ad_request_success
 signal ad_request_failed(error_message: String)
 
-const YT_GAME_SDK_JS_WINDOW_OBJECT = "window.YTGameSDK_Godot"
+const SDK := "window.YTGameSDK_Godot"
+const STATE := "window.__XENOHT"
+
+# Set once in _ready; when false (standalone / local) we skip all polling.
+var _in_env := false
+
+# Poll cursors so each event is handled exactly once.
+var _pause_seen := 0
+var _resume_seen := 0
+var _saveok_seen := 0
+var _adok_seen := 0
+
 
 func _ready() -> void:
-	# This script should be an Autoload/Singleton.
-	if OS.has_feature("web"):
-		# Create a global object for JS to hold callback functions
-		JavaScriptBridge.eval("""
-			window.GodotYTCallbacks = {
-				onAudioEnabledChanged: (isEnabled) => {},
-				onGamePaused: () => {},
-				onGameResumed: () => {},
-				onLoadDataReceived: (data) => {},
-				onSaveSuccess: () => {},
-				onSaveFailed: (error) => {},
-				onAdSuccess: () => {},
-				onAdFailed: (error) => {}
-			};
-		""")
-		
-		# Create Godot-side callbacks and assign them to the JS object
-		var godot_callbacks = JavaScriptBridge.get_interface("GodotYTCallbacks")
-		godot_callbacks.set("onAudioEnabledChanged", Callable(self, "_on_audio_enabled_changed"))
-		godot_callbacks.set("onGamePaused", Callable(self, "_on_game_paused"))
-		godot_callbacks.set("onGameResumed", Callable(self, "_on_game_resumed"))
-		godot_callbacks.set("onLoadDataReceived", Callable(self, "_on_load_data_received"))
-		godot_callbacks.set("onSaveSuccess", Callable(self, "_on_save_success"))
-		godot_callbacks.set("onSaveFailed", Callable(self, "_on_save_failed"))
-		godot_callbacks.set("onAdSuccess", Callable(self, "_on_ad_success"))
-		godot_callbacks.set("onAdFailed", Callable(self, "_on_ad_failed"))
-		
-		# Tell the JS library to set up its own internal callbacks to YouTube
-		var js_code = "%s.setAllCallbacks();" % YT_GAME_SDK_JS_WINDOW_OBJECT
-		JavaScriptBridge.eval(js_code)
+	if not OS.has_feature("web"):
+		return
+	# Install the official SDK's system listeners onto a pure-JS object that
+	# only records state into window.__XENOHT. Then tell the SDK to wire it.
+	JavaScriptBridge.eval("""
+		window.__XENOHT = {
+			pauseCount: 0, resumeCount: 0,
+			audioEnabled: true, audioDirty: false,
+			loadPayload: null,
+			saveOkCount: 0, saveFailMsg: "",
+			adOkCount: 0, adFailMsg: ""
+		};
+		window.GodotYTCallbacks = {
+			onAudioEnabledChanged: function(e){ window.__XENOHT.audioEnabled = !!e; window.__XENOHT.audioDirty = true; },
+			onGamePaused: function(){ window.__XENOHT.pauseCount++; },
+			onGameResumed: function(){ window.__XENOHT.resumeCount++; },
+			onLoadDataReceived: function(d){ window.__XENOHT.loadPayload = (d == null ? "" : String(d)); },
+			onSaveSuccess: function(){ window.__XENOHT.saveOkCount++; },
+			onSaveFailed: function(e){ window.__XENOHT.saveFailMsg = String(e); },
+			onAdSuccess: function(){ window.__XENOHT.adOkCount++; },
+			onAdFailed: function(e){ window.__XENOHT.adFailMsg = String(e); }
+		};
+		%s.setAllCallbacks();
+	""" % SDK)
+	# Detect the env once; skip per-frame polling outside Playables.
+	_in_env = bool(JavaScriptBridge.eval("%s.inPlayablesEnv();" % SDK))
 
-# --- Public API ---
 
-## Returns the YouTube Playables SDK version string.
+## Reads a numeric window.__XENOHT counter.
+func _poll_count(prop: String) -> int:
+	return int(JavaScriptBridge.eval("%s.%s" % [STATE, prop]))
+
+
+func _process(_delta: float) -> void:
+	if not OS.has_feature("web") or not _in_env:
+		return
+	# One-arg reads are injection-free (we own the property names).
+	var pc: int = _poll_count("pauseCount")
+	if pc != _pause_seen:
+		_pause_seen = pc
+		game_paused.emit()
+	var rc: int = _poll_count("resumeCount")
+	if rc != _resume_seen:
+		_resume_seen = rc
+		game_resumed.emit()
+	var so: int = _poll_count("saveOkCount")
+	if so != _saveok_seen:
+		_saveok_seen = so
+		save_data_success.emit()
+	var ao: int = _poll_count("adOkCount")
+	if ao != _adok_seen:
+		_adok_seen = ao
+		ad_request_success.emit()
+	# String flags (read then cleared so they fire exactly once).
+	var sf: String = str(JavaScriptBridge.eval("%s.saveFailMsg" % STATE))
+	JavaScriptBridge.eval("%s.saveFailMsg = \\'\\';" % STATE)
+	if sf != "":
+		save_data_failed.emit(sf)
+	var af: String = str(JavaScriptBridge.eval("%s.adFailMsg" % STATE))
+	JavaScriptBridge.eval("%s.adFailMsg = \\'\\';" % STATE)
+	if af != "":
+		ad_request_failed.emit(af)
+	var lp: String = str(JavaScriptBridge.eval("%s.loadPayload" % STATE))
+	JavaScriptBridge.eval("%s.loadPayload = null;" % STATE)
+	if lp != "" and lp != "null":
+		load_data_received.emit(lp)
+	var audio_dirty: bool = bool(JavaScriptBridge.eval("%s.audioDirty" % STATE))
+	if audio_dirty:
+		JavaScriptBridge.eval("%s.audioDirty = false;" % STATE)
+		audio_enabled_changed.emit(bool(JavaScriptBridge.eval("%s.audioEnabled" % STATE)))
+
+
+# --- Public API (names match the official wrapper) ---
+
 func get_sdk_version() -> String:
-	if OS.has_feature("web"):
-		return JavaScriptBridge.eval("%s.getSDKVersion();" % YT_GAME_SDK_JS_WINDOW_OBJECT)
-	return "N/A"
+	if not OS.has_feature("web"):
+		return "N/A"
+	return str(JavaScriptBridge.eval("%s.getSDKVersion();" % SDK))
 
-## Sends the player's score to YouTube.
+
 func send_score(score: int) -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("%s.sendScore(%d);" % [YT_GAME_SDK_JS_WINDOW_OBJECT, score])
+		JavaScriptBridge.eval("%s.sendScore(%d);" % [SDK, int(score)])
 
-## Notifies YouTube that the game's first frame is ready to be shown.
-## NOTE: The game MUST call this API. Otherwise, the game isn't shown on YouTube.
+
 func first_frame_ready() -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("%s.firstFrameReady();" % YT_GAME_SDK_JS_WINDOW_OBJECT)
+		JavaScriptBridge.eval("%s.firstFrameReady();" % SDK)
 
-## Notifies YouTube that the game is ready for players to interact with.
+
 func game_ready() -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("%s.gameReady();" % YT_GAME_SDK_JS_WINDOW_OBJECT)
+		JavaScriptBridge.eval("%s.gameReady();" % SDK)
 
-## Saves game data to the YouTube cloud. Emits save_data_success or save_data_failed.
+
 func save_data(data: String) -> void:
-	if OS.has_feature("web"):
-		print("save_data call")
-		# May need to escape string before seding it >> something like data.javascript_escape() ??
-		JavaScriptBridge.eval("%s.saveData('%s');" % [YT_GAME_SDK_JS_WINDOW_OBJECT, data])  
+	if not OS.has_feature("web"):
+		return
+	# `data` is our compact JSON payload string; embed it as an escaped JS
+	# string literal (no raw embedding -> no injection), the SDK stringifies it
+	# server-side. Result arrives via the onSaveSuccess/onSaveFailed flags.
+	JavaScriptBridge.eval("%s.saveData(%s);" % [SDK, _js_str(data)])
 
-## Requests to load game data from the YouTube cloud. Emits load_data_received on success.
+
 func load_data() -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("%s.loadData();" % YT_GAME_SDK_JS_WINDOW_OBJECT)
+		JavaScriptBridge.eval("%s.loadData();" % SDK)
 
-## Logs an error to YouTube for tracking in the developer dashboard.
+
 func log_error(message: String) -> void:
 	if OS.has_feature("web"):
-		print("log_error call")
-		JavaScriptBridge.eval("%s.logError('%s');" % [YT_GAME_SDK_JS_WINDOW_OBJECT, message])
+		JavaScriptBridge.eval("%s.logError(%s);" % [SDK, _js_str(message)])
 
-## Logs a warning to YouTube for tracking in the developer dashboard.
+
 func log_warning(message: String) -> void:
 	if OS.has_feature("web"):
-		print("log_warning call")
-		JavaScriptBridge.eval("%s.logWarning('%s');" % [YT_GAME_SDK_JS_WINDOW_OBJECT, message])
+		JavaScriptBridge.eval("%s.logWarning(%s);" % [SDK, _js_str(message)])
 
-## Returns whether the game audio is enabled in the YouTube settings.
+
 func is_audio_enabled() -> bool:
-	if OS.has_feature("web"):
-		return JavaScriptBridge.eval("%s.isAudioEnabled();" % YT_GAME_SDK_JS_WINDOW_OBJECT)
-	return true
+	if not OS.has_feature("web"):
+		return true
+	return bool(JavaScriptBridge.eval("%s.isAudioEnabled();" % SDK))
 
-## Returns whether the game is currently loaded in a proper Playables Environment.
+
 func in_playables_env() -> bool:
-	if OS.has_feature("web"):
-		return JavaScriptBridge.eval("%s.inPlayablesEnv();" % YT_GAME_SDK_JS_WINDOW_OBJECT)
-	return false
+	if not OS.has_feature("web"):
+		return false
+	return bool(JavaScriptBridge.eval("%s.inPlayablesEnv();" % SDK))
 
-## Requests an Interstitial Ad. Emits ad_request_success or ad_request_failed.
+
 func request_interstitial_ad() -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("%s.requestInterstitialAd();" % YT_GAME_SDK_JS_WINDOW_OBJECT)
+		JavaScriptBridge.eval("%s.requestInterstitialAd();" % SDK)
 
-# --- Callback Handlers (called from JavaScript) ---
-func _on_audio_enabled_changed(is_enabled: bool) -> void:
-	audio_enabled_changed.emit(is_enabled)
 
-func _on_game_paused() -> void:
-	game_paused.emit()
-
-func _on_game_resumed() -> void:
-	game_resumed.emit()
-
-func _on_load_data_received(data: String) -> void:
-	load_data_received.emit(data)
-
-func _on_save_success() -> void:
-	save_data_success.emit()
-
-func _on_save_failed(error_message: String) -> void:
-	save_data_failed.emit(error_message)
-
-func _on_ad_success() -> void:
-	ad_request_success.emit()
-
-func _on_ad_failed(error_message: String) -> void:
-	ad_request_failed.emit(error_message)
+## Escape a GDScript string into a single-quoted JS string literal.
+func _js_str(s: String) -> String:
+	var out := s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+	return "'%s'" % out

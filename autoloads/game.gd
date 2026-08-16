@@ -370,6 +370,24 @@ func _try_spawn_enemies() -> void:
 	next_entity_id += 1
 
 
+## Public helper: force-spawn an enemy at a hex (used by the benchmark and
+## by tests to guarantee a combat scenario).
+func spawn_enemy_at(c: Vector2i, kind: String) -> int:
+	var spec: Dictionary = _enemy_spec(kind)
+	if spec.is_empty():
+		push_warning("spawn_enemy_at: unknown enemy kind '%s'" % kind)
+		return -1
+	enemies.append({
+		"id": next_entity_id,
+		"kind": kind,
+		"pos": c,
+		"hp": int(spec.get("hp", 3)),
+	})
+	var id: int = next_entity_id
+	next_entity_id += 1
+	return id
+
+
 func _weighted_enemy_kind() -> String:
 	var specs: Dictionary = balance.get("enemies", {})
 	var total: int = 0

@@ -222,7 +222,7 @@ func _toast(text: String, icon: String) -> void:
 		var pic: TextureRect = TextureRect.new()
 		pic.texture = t
 		pic.custom_minimum_size = Vector2(34, 34)
-		pic.stretch = true
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		pic.size = Vector2(34, 34)
 		pic.position = Vector2(10, toast.position.y - 8)
 		pic.modulate.a = 1.0

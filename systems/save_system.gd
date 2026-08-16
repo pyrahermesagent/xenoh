@@ -35,10 +35,11 @@ func parse_payload(json_str: String) -> Dictionary:
 func save_local(json_str: String) -> void:
 	if not _js_available():
 		return
-	var escaped: String = _js_escape(json_str)
+	# JSON.stringify quotes+escapes the Godot string on the JS side — no
+	# manual escaping (which would double-escape).
 	JavaScriptBridge.eval(
-		"try { localStorage.setItem(%s, %s); } catch (e) { console.warn('XenoHeart save failed', e); }"
-		% [_js_str(SAVE_KEY), _js_str(escaped)]
+		"try { localStorage.setItem(JSON.stringify(%s), JSON.stringify(%s)); } catch (e) { /* sandboxed or private mode */ }"
+		% [_js_str(SAVE_KEY), _js_str(json_str)]
 	)
 
 
@@ -46,7 +47,7 @@ func load_local() -> String:
 	if not _js_available():
 		return ""
 	var ret: Variant = JavaScriptBridge.eval(
-		"(function(){ try { return localStorage.getItem(%s) || ''; } catch(e){ return ''; } })();"
+		"(function(){ try { var v = localStorage.getItem(JSON.stringify(%s)); return v == null ? '' : v; } catch (e) { return ''; } })();"
 		% _js_str(SAVE_KEY)
 	)
 	return str(ret)
@@ -54,7 +55,7 @@ func load_local() -> String:
 
 func clear_local() -> void:
 	if _js_available():
-		JavaScriptBridge.eval("try { localStorage.removeItem(%s); } catch(e) {}" % _js_str(SAVE_KEY))
+		JavaScriptBridge.eval("try { localStorage.removeItem(JSON.stringify(%s)); } catch (e) { /* noop */ }" % _js_str(SAVE_KEY))
 
 
 # ---------------- helpers ----------------
