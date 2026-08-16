@@ -1,6 +1,6 @@
 9cad1ddce9e5a63143ba340c9520626b
 ::res://::1786917255
-balance.json::JSON::-1::1786916121::0::1::::<><><>0<>0<><>::
+balance.json::JSON::-1::1786922747::0::1::::<><><>0<>0<><>::
 content.json::JSON::-1::1786912948::0::1::::<><><>0<>0<><>::
 export_presets.cfg::TextFile::-1::1786918079::0::1::::<><><>0<>0<><>::
 ::res://art/::1786916734
@@ -49,12 +49,12 @@ world_gen.gd::GDScript::406651700504720388::1786916153::0::1::::WorldGen<>RefCou
 ::res://docs/::1786910890
 ::res://entities/::1786910890
 ::res://export/::1786918013
-::res://export/web/::1786921990
-index.apple-touch-icon.png::CompressedTexture2D::497175563299351963::1786920594::1786921990::1::::<><><>0<>0<>373536521dde8c6b62968853ff74aa77<>res://.godot/imported/index.apple-touch-icon.png-aebfb1e41ce4a993e231d731c37e24be.ctex::
-index.icon.png::CompressedTexture2D::4674479913444353338::1786920594::1786921990::1::::<><><>0<>0<>d294802e3d2b3891d3e1c57e7c2d4351<>res://.godot/imported/index.icon.png-71c9d3338695ba24c45c706011eaad77.ctex::
-index.png::CompressedTexture2D::6720017283115251584::1786920594::1786921990::1::::<><><>0<>0<>85c570bb27a63fd7930f634bcdb9e916<>res://.godot/imported/index.png-c2d8175aa2006ac735a751c5803e019d.ctex::
-::res://scenes/::1786918749
-main.gd::GDScript::7582460718817242617::1786918749::0::1::::<>Node<><>0<>0<><>::
+::res://export/web/::1786922828
+index.apple-touch-icon.png::CompressedTexture2D::6375786699095815074::1786922033::1786922828::1::::<><><>0<>0<>452db6fc2c4abe555fb8ffe2c4f26f97<>res://.godot/imported/index.apple-touch-icon.png-aebfb1e41ce4a993e231d731c37e24be.ctex::
+index.icon.png::CompressedTexture2D::3591259568920272910::1786922033::1786922828::1::::<><><>0<>0<>c5344f464d0ceb569d334e694d504b4a<>res://.godot/imported/index.icon.png-71c9d3338695ba24c45c706011eaad77.ctex::
+index.png::CompressedTexture2D::210904247900181579::1786922033::1786922828::1::::<><><>0<>0<>5645f29cd718f63dcc17616eef0074e7<>res://.godot/imported/index.png-c2d8175aa2006ac735a751c5803e019d.ctex::
+::res://scenes/::1786922824
+main.gd::GDScript::7582460718817242617::1786922824::0::1::::<>Node<><>0<>0<><>::
 main.tscn::PackedScene::-1::1786914597::0::1::::<><><>0<>0<><>::res://scenes/main.gd
 world_view.gd::GDScript::1862092999058574661::1786915523::0::1::::WorldView<>Node2D<><>0<>0<><>::
 ::res://systems/::1786918616

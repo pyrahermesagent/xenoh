@@ -564,7 +564,7 @@ func _rebuild_inventory() -> void:
 		if ResourceLoader.exists(ipath):
 			icon.texture = load(ipath)
 		icon.custom_minimum_size = Vector2(28, 28)
-		icon.stretch = true
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		row.add_child(icon)
 		var name_lbl := Label.new()
 		name_lbl.text = "%s x%d" % [_item_name(str(item)), int(inv[item])]
