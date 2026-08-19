@@ -1,0 +1,98 @@
+# XenoHeart — export the Godot web build and publish it to GitHub Pages.
+#
+# Same build pipeline as deploy-web (x86-64 Godot; the Web export is
+# architecture-independent), but instead of rsync'ing to Hetzner it publishes
+# export/web/ to the repo's gh-pages branch.
+#
+# One-time setup (Settings -> Pages): Source = "Deploy from a branch",
+# Branch = gh-pages, Folder = / (root). This repo already has Pages enabled
+# with that configuration.
+#
+# URL when live: https://<owner>.github.io/xenoh/
+
+name: deploy-pages
+
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.7.1"
+  GODOT_TAG: "4.7.1-stable"
+
+permissions:
+  contents: write
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment: pages
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install deps
+        run: sudo apt-get update -y && sudo apt-get install -y unzip
+
+      - name: Download Godot ${{ env.GODOT_VERSION }} (linux x86_64)
+        run: |
+          curl -sL -o godot.zip "https://github.com/godotengine/godot/releases/download/${GODOT_TAG}/Godot_v${GODOT_TAG}_linux.x86_64.zip"
+          unzip -q godot.zip
+          chmod +x Godot_v${GODOT_TAG}_linux.x86_64
+          ./Godot_v${GODOT_TAG}_linux.x86_64 --version
+
+      - name: Install web export templates
+        run: |
+          # The .tpz extracts to "templates/*.zip"; Godot's export template
+          # manager looks for them DIRECTLY inside a version dir.
+          curl -sL -o templates.zip "https://github.com/godotengine/godot/releases/download/${GODOT_TAG}/Godot_v${GODOT_TAG}_export_templates.tpz"
+          unzip -q -o templates.zip
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          cp templates/*.zip templates/*.dat ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable/
+          ls ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable | grep -c web_nothreads
+
+      - name: Import project
+        run: ./Godot_v${GODOT_TAG}_linux.x86_64 --headless --path . --import
+
+      - name: Unit tests (determinism / crafting / save round-trip)
+        run: ./Godot_v${GODOT_TAG}_linux.x86_64 --headless --path . -s res://tests/run_tests.gd
+
+      - name: 60fps budget @ 20 enemies
+        run: ./Godot_v${GODOT_TAG}_linux.x86_64 --headless --path . res://tests/bench.tscn
+
+      - name: Export web build (threads disabled)
+        run: |
+          mkdir -p export/web
+          ./Godot_v${GODOT_TAG}_linux.x86_64 --headless --path . --export-release "Web" export/web/index.html
+          cp YTGameSDK.js export/web/
+          find export/web -name "*.import" -delete
+          ls -la export/web
+
+      - name: Sanity-check export
+        run: |
+          test -f export/web/index.html
+          test -f export/web/index.wasm
+          test -f export/web/index.js
+          test -f export/web/index.pck
+          test -f export/web/YTGameSDK.js
+          echo "export artifacts present"
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: export/web
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-deploy
+    environment:
+      name: pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
