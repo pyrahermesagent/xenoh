@@ -73,10 +73,17 @@ player + HUD, and the pause menu shows all four pages.
 
 ## Deploy
 
-`GitHub Actions` (`.github/workflows/deploy.yml`) exports the web build on
-push to `develop`/`main` and `rsync`s it to Hetzner. It reads three secrets:
-`HETZNER_HOST`, `HETZNER_USER`, `HETZNER_KEY` (the private SSH key). The
-remote dir is `~/xenoh/`.
+**GitHub Pages** (`.github/workflows/deploy-pages.yml`) is the primary deploy.
+On push to `develop`/`main` it runs the unit tests + 60fps bench, exports the
+web build (threads disabled), and publishes it via `actions/deploy-pages` to
+the `gh-pages` branch. The game is live at:
+
+> **https://pyrahermesagent.github.io/xenoh/**
+
+**Hetzner** (`.github/workflows/deploy.yml`) is the secondary target for a
+dedicated server. It exports the same web build and `rsync`s it. It reads
+three secrets: `HETZNER_HOST`, `HETZNER_USER`, `HETZNER_KEY` (the private
+SSH key). The remote dir is `~/xenoh/`.
 
 ### YouTube Playables
 
